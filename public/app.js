@@ -53,7 +53,7 @@ function loadSdk() {
   if (sdkReady) return sdkReady;
   sdkReady = new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(config.clientId)}&currency=USD&intent=capture`;
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(config.clientId)}&currency=USD&intent=capture&locale=en_US`;
     s.onload = res; s.onerror = () => rej(new Error('PayPal SDK failed to load'));
     document.head.appendChild(s);
   });
@@ -88,7 +88,7 @@ function renderPurchases() {
     const st = req ? (req.status === 'refunded' ? `<span class="tag ok">Refunded ${money(req.refundAmount)}</span>` : req.status === 'replied' ? '<span class="tag">Seller replied</span>' : '<span class="tag warn">Refund requested</span>') : '<span class="tag">Paid</span>';
     const usage = p.gems ? `${(p.gems - p.spent).toLocaleString()} of ${p.gems.toLocaleString()} gems left` : `${p.sessions} play sessions`;
     return `<div class="purchase"><div><strong>${esc(p.name)}</strong> · ${money(p.price)}
-      <div class="meta">Order <code>${p.orderId}</code> · ${new Date(p.paidAt).toLocaleString()} · ${usage}</div>
+      <div class="meta">Order <code>${p.orderId}</code> · ${new Date(p.paidAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })} · ${usage}</div>
       ${req?.reply ? `<div class="meta">Seller: ${esc(req.reply)}</div>` : ''}</div>
       <div class="row end">${st}
       <button class="small" data-play="${i}">${p.gems ? 'Spend 100 gems' : 'Play a session'}</button>

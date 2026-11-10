@@ -1,0 +1,12 @@
+{
+  "name": "refundclerk",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "ai": "^7.0.0",
+    "zod": "^4.0.0"
+  }
+}

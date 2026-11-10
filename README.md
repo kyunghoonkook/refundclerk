@@ -30,7 +30,7 @@ Built for the PayPal AI Hackathon (2026).
 ## AI
 
 - Agent loop with tool calling via the [Vercel AI SDK](https://ai-sdk.dev) (`generateText`, `tool`, `stopWhen`).
-- Model: `openai/gpt-4o-mini` through the Vercel AI Gateway (change with `AI_MODEL`).
+- Model: Google Gemini through `@ai-sdk/google` (`gemini-3.5-flash`, falling back to `gemini-flash-lite-latest` and `gemini-3.8-flash` when a model is busy; change with `AI_MODELS`).
 - The model only sees the order facts, the usage record, the policy and the message. It has no tool that moves money.
 - I also used Claude as a coding assistant while building this.
 
@@ -56,7 +56,7 @@ Requires Node 20+ and the [Vercel CLI](https://vercel.com/docs/cli).
 git clone https://github.com/kyunghoonkook/refundclerk
 cd refundclerk
 npm install
-cp .env.example .env   # fill in sandbox client ID/secret and an AI Gateway key
+cp .env.example .env   # fill in sandbox client ID/secret and a Gemini API key
 vercel dev
 ```
 

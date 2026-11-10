@@ -1,4 +1,5 @@
 import { generateText, tool, stepCountIs, hasToolCall } from 'ai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
 import { getOrderSummary } from '../lib/paypal.js';
 import { readJson, send, fail } from '../lib/http.js';
@@ -33,9 +34,14 @@ export default async function handler(req, res) {
     const { orderId, message, policy, usage } = await readJson(req);
     if (!message || !policy) return send(res, 400, { error: 'message and policy are required' });
 
-    const trace = [];
-    let orderFacts = null;
-    let decision = null;
+    const google = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY });
+    const models = (process.env.AI_MODELS || 'gemini-3.5-flash,gemini-flash-lite-latest,gemini-3.8-flash').split(',').map((x) => x.trim()).filter(Boolean);
+    let trace, orderFacts, decision, usedModel, result;
+    const errors = [];
+    for (const modelId of models) {
+    trace = [];
+    orderFacts = null;
+    decision = null;
 
     const tools = {
       lookupOrder: tool({
@@ -75,15 +81,27 @@ export default async function handler(req, res) {
       }),
     };
 
-    const result = await generateText({
-      model: process.env.AI_MODEL || 'openai/gpt-4o-mini',
+    try {
+    result = await generateText({
+      model: google(modelId),
+      maxRetries: 0,
+      abortSignal: AbortSignal.timeout(22000),
       system: SYSTEM,
       prompt: `Seller policy:\n"""\n${policy}\n"""\n\nOrder ID given by the customer: ${orderId || '(none)'}\nToday: ${new Date().toISOString().slice(0, 10)}\n\nCustomer message:\n"""\n${message}\n"""`,
       tools,
       stopWhen: [hasToolCall('submitDecision'), stepCountIs(6)],
     });
+    } catch (e) {
+      errors.push(`${modelId}: ${e.message}`);
+      continue;
+    }
+    usedModel = modelId;
+    if (decision) break;
+    errors.push(`${modelId}: no decision returned`);
+    }
+    if (!usedModel) return send(res, 503, { error: 'All AI models are busy right now. Please try again in a minute.', details: errors });
 
-    if (!decision) return send(res, 502, { error: 'The agent did not return a decision', text: result.text, trace });
+    if (!decision) return send(res, 502, { error: 'The agent did not return a decision', text: result?.text, trace, details: errors });
 
     // Guardrails: the model proposes, the server checks the numbers against PayPal.
     const warnings = [];
@@ -104,7 +122,7 @@ export default async function handler(req, res) {
       decision.amount = 0;
     }
 
-    send(res, 200, { decision, order: orderFacts, trace, warnings, model: process.env.AI_MODEL || 'openai/gpt-4o-mini' });
+    send(res, 200, { decision, order: orderFacts, trace, warnings, model: usedModel });
   } catch (e) {
     fail(res, e);
   }
